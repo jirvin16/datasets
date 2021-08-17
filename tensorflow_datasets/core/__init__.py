@@ -47,6 +47,7 @@ from tensorflow_datasets.core.registered import DatasetNotFoundError
 
 from tensorflow_datasets.core.split_builder import SplitGeneratorLegacy as SplitGenerator
 
+from tensorflow_datasets.core.splits import LazySplit
 from tensorflow_datasets.core.splits import Split
 from tensorflow_datasets.core.splits import SplitDict
 from tensorflow_datasets.core.splits import SplitInfo
@@ -86,6 +87,7 @@ __all__ = [
     "GeneratorBasedBuilder",
     "gcs_path",
     "lazy_imports",
+    "LazySplit",
     "Metadata",
     "MetadataDict",
     "PathLike",

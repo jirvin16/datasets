@@ -15,16 +15,18 @@
 
 """Splits related API."""
 
+import abc
+import dataclasses
 import typing
 from typing import Any, List, Optional, Union
-
-import dataclasses
 
 from tensorflow_datasets.core import proto as proto_lib
 from tensorflow_datasets.core import tfrecords_reader
 from tensorflow_datasets.core import utils
 from tensorflow_datasets.core.utils import shard_utils
 from tensorflow_metadata.proto.v0 import statistics_pb2
+
+SplitArg = Union[str, "Split", "LazySplit", tfrecords_reader.ReadInstruction]
 
 
 @dataclasses.dataclass(eq=False, frozen=True)
@@ -205,6 +207,43 @@ if typing.TYPE_CHECKING:
   Split = Union[Split, str]
 
 
+class LazySplit(abc.ABC):
+  """Split which is lazyly constructed.
+
+  This allow to dynamically compute the splits using TFDS metadata, for example
+  to compute precise slice of the data.
+
+  Here is a dummy example:
+
+  ```python
+  @dataclasses.dataclass
+  class MySplit(LazySplit):
+    split_name: str
+
+    def resolve(self, split_infos: tfds.core.SplitDict) -> str:
+      num_examples = split_infos[self.split_name].num_examples
+      return f'{self.split_name}[:{num_examples / 2}]'
+
+  ds = tfds.load(..., split=MySplit('train'))
+  ```
+
+  """
+
+  @abc.abstractmethod
+  def resolve(
+      self,
+      split_infos: "SplitDict",
+  ) -> SplitArg:
+    """Resolve the lazy split into actual value.
+
+    Args:
+      split_infos: The splits info (containing num example, num shards,...)
+
+    Returns:
+      The split values (either `str` or `ReadInstruction`)
+    """
+
+
 class SplitDict(utils.NonMutableDict):
   """Split info object."""
 
@@ -249,30 +288,3 @@ class SplitDict(utils.NonMutableDict):
   def total_num_examples(self):
     """Return the total number of examples."""
     return sum(s.num_examples for s in self.values())
-
-
-def even_splits(
-    split: str,
-    n: int,
-) -> List[str]:
-  """Generates a list of sub-splits of same size.
-
-  Example:
-
-  ```python
-  assert tfds.even_splits('train', n=3) == [
-      'train[0%:33%]', 'train[33%:67%]', 'train[67%:100%]',
-  ]
-  ```
-
-  Args:
-    split: Split name (e.g. 'train', 'test',...)
-    n: Number of sub-splits to create
-
-  Returns:
-    The list of subsplits.
-  """
-  if n <= 0 or n > 100:
-    raise ValueError(f"n should be > 0 and <= 100. Got {n}")
-  partitions = [round(i * 100 / n) for i in range(n + 1)]
-  return [f"{split}[{partitions[i]}%:{partitions[i+1]}%]" for i in range(n)]

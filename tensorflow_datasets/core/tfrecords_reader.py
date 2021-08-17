@@ -36,7 +36,7 @@ from tensorflow_datasets.core.utils import shard_utils
 SplitInfo = Any
 
 # Accepted split values (in `as_dataset(split=...)`)
-SplitArg = Union[str, 'ReadInstruction']
+SplitArg = Union[str, 'ReadInstruction', Any]
 
 Tree = utils.Tree
 TreeDict = utils.TreeDict
@@ -162,8 +162,15 @@ def make_file_instructions(
   Returns:
     file_intructions: FileInstructions instance
   """
+  from tensorflow_datasets.core import splits as splits_lib  # pytype: disable=import-error
+
   # The code could be simplified by forwarding SplitDict everywhere
-  split_infos = {info.name: info for info in split_infos}
+  split_infos = splits_lib.SplitDict(list(split_infos), dataset_name=name)
+
+  # Resolve the lazy splits
+  if isinstance(instruction, splits_lib.LazySplit):
+    instruction = instruction.resolve(split_infos)  # pytype: disable=attribute-error
+
   if not isinstance(instruction, ReadInstruction):
     instruction = ReadInstruction.from_spec(instruction)
   # Create the absolute instruction (per split)
@@ -769,7 +776,7 @@ class ReadInstruction(object):
     return self._read_instruction_from_relative_instructions(
         self._relative_instructions + other_ris)
 
-  def __str__(self):
+  def __repr__(self):
     return 'ReadInstruction(%s)' % self._relative_instructions
 
   def to_absolute(self, split_infos):
