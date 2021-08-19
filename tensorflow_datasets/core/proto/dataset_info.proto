@@ -41,8 +41,33 @@ message SplitInfo {
 // This message indicates which feature in the dataset schema is the input and
 // which one is the output.
 message SupervisedKeys {
+  // input and output are no longer used, but can still be loaded.
+  // now everything goes in `tuple`
   string input = 1;
   string output = 2;
+
+  Tuple tuple = 3;
+
+  message Tuple {
+    repeated Nest items = 1;
+  }
+
+  message Dict {
+    repeated Item items = 1;
+
+    message Item {
+      string key = 1;
+      Nest value = 2;
+    }
+  }
+
+  message Nest {
+    oneof nest {
+      string feature_key = 1;
+      Tuple tuple = 2;
+      Dict dict = 3;
+    }
+  }
 }
 
 // This message includes information for redistribution of the dataset.
